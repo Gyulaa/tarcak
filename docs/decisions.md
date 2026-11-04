@@ -49,7 +49,8 @@ Tartós döntésenként egy bejegyzés, a legújabb elöl. Változó döntést h
 
 ## 2026-10-28 · Képernyőkép-tiltás kapcsolható beállításként
 - **Döntés:** új függőség `expo-screen-capture` (~55.0.18); Beállítások → Privacy → „Block screenshots” (`user_settings.block_screen_capture`, alapból ki). Bekapcsolva Androidon `FLAG_SECURE`: nincs képernyőkép és felvétel, az appváltóban nincs előnézet. Az érték az adatbázisban van, ezért az app a feloldás után alkalmazza; zárolt állapotban nincs rajta adat.
-- **Miért:** B10. Az appváltó-előnézetre a háttérbe lépéskori azonnali zárolás nem garancia, a `FLAG_SECURE` az; de a képernyőkép-készítést megakadályozza, ezért nem alapértelmezett. A könyvtár három fölösleges jogosultságot hozna (`READ_EXTERNAL_STORAGE`, `READ_MEDIA_IMAGES`, `DETECT_SCREEN_CAPTURE`, csak a képernyőkép-figyelőhöz kellenek), ezek az `app.json` `blockedPermissions` listájában vannak. Gyula kérte.
+- **Miért:** B10. Az appváltó-előnézetre a háttérbe lépéskori azonnali zárolás nem garancia, a `FLAG_SECURE` az; de a képernyőkép-készítést megakadályozza, ezért nem alapértelmezett. A könyvtár két fölösleges jogosultságot hoz (`READ_EXTERNAL_STORAGE`, `READ_MEDIA_IMAGES`, csak a régi Androidok képernyőkép-figyelőjéhez kellenek), ezek az `app.json` `blockedPermissions` listájában vannak. Gyula kérte.
+- **Változás (2026-11-04):** a `DETECT_SCREEN_CAPTURE` nem tiltható: Android 14+-on a könyvtár induláskor feltétel nélkül regisztrálja a képernyőkép-callbacket, és a jogosultság nélkül az app a betöltéskor összeomlik (B23). Normál, telepítéskor megadott jogosultság, adathoz nem ad hozzáférést. A `tests/appConfig.test.ts` őrzi.
 - **Érinti:** `package.json`, `app.json`, `src/utils/screenCapture.ts`, `src/db/repositories/settings.ts`, `src/screens/SettingsScreen.tsx`, `AppBoot.tsx`
 
 ## 2026-10-28 · Havi kimutatás exportja: sima CSV, kevés adat, kimondott titkosítatlanság
