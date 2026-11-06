@@ -1,6 +1,6 @@
 # Spec: Statisztika hónapokra bontva (áttekintő + hónapnézet)
 
-Állapot: **tervezet, Gyula jóváhagyására vár.** Készült: 2026-11-06. Ág: `feat/statistics-months` (a `main`-ről).
+Állapot: **megvalósítva (1–7. feladat), eszközös próba hátra.** Készült: 2026-11-06. Ág: `feat/statistics-months` (a `main`-ről).
 
 ## Cél
 
@@ -80,17 +80,24 @@ Minták: tiszta logika és Node-teszt a `src/domain/monthlyReport.ts` + `tests/m
 
 Adatvédelem (`privacy-check`): nincs új adatmező, export, hálózat, napló vagy harmadik fél; csak olvasás a meglévő főkönyvből, a képernyőn. A választás nem tárolódik.
 
+## Eltérések a tervtől (megvalósításkor)
+- Az „első tranzakció” az első olyan tétel, amely a zsebkör egyenlegét változtatja, átvezetés is (`getFirstActivityAt(currency, scope)` a `monthlyStats` repóban); így egy csak átvezetésből feltöltött zseb hónapjai is elérhetők. A meglévő `getEarliestOccurredAt` változatlan (a `TimeRangePickerField` használja). Ha nincs ilyen tétel: „No HUF transactions yet.”; a „Balance over time” kártya ekkor is látszik.
+- A csempék és a kapcsoló a `radio` szerephez illő `accessibilityState.checked`-et használják (nem `selected`).
+- Hónapnézetben visszalépéskor egy hiányzó hónap 2 lekérdezés (összegek és egyenleg), nem 1.
+- A History lefúrási paramétere `TransactionDrill` (`src/domain/transactionFilter.ts`); a `categoryId: null` jelenti a kategória nélkülit. A szűrőt a `filterForDrill` építi, és teszt őrzi, hogy a listázott tételek összege megegyezik a sor összegével.
+- A repó-réteg tesztjei valódi SQL-t futtatnak egy memóriabeli `node:sqlite` adatbázison (`tests/stubs/dbClient.ts`, `tests/ledgerFixture.ts`). Ezzel derült ki a B24 (az „Outside Jar” kezdőegyenleg hibája), és a javítás külön commitban ment.
+
 ## Feladatok
 
 Mindegyik külön commit, a saját tesztjével; a végén `scripts/check.sh` = OK.
 
-1. [ ] **Domain:** `src/domain/monthlyStats.ts` + `tests/monthlyStats.test.ts`. Teszt: hónaplépés év határán; összegzés `bigint`-tel 2^53 fölött; átlag (kevesebb mint 3 hónap → nincs; az első tranzakció előtti hónapok kimaradnak; üres hónap = 0; a folyó hónap nem számít); lebontás (rendezés, a 7-es levágás nem itt, hanem a komponensben; nulla kimarad; negatív külön; `pocketIds` sorpontosan); `chartScale` negatív értékkel; `monthsCteSql` paraméterei.
-2. [ ] **Repó:** `src/db/repositories/monthlyStats.ts`, `getEarliestOccurredAt(currency, scope)`. Kézi ellenőrzés teszt-vaulttal: egy hónap összegei egyeznek a `ReportExport` előnézetével (ugyanaz a zsebkör), a hónap végi egyenleg a mai „Balance over time” görbe adott napi értékével.
-3. [ ] **Közös választás és alap-komponensek:** `useStatisticsSelection`, `SegmentedControl`, `RankedBarList`, `MonthlyBarsChart`. A `DESIGN.md`-be az új komponensek.
-4. [ ] **Áttekintő** átírása, `BalanceTrendCard` kiemelése, `Export` a fejlécbe.
-5. [ ] **Hónapnézet** képernyő és route.
-6. [ ] **History lefúrás:** `fromMs`/`toMs` a `buildTransactionFilter`-ben (teszt a `tests/transactionFilter.test.ts`-ben: határok `>=`/`<`; `jarPocketId: null` mellett az `income` nem húz be átvezetést), `drill` paraméter, chip.
-7. [ ] **Takarítás:** a halott kód és a `DonutChart` törlése, `DESIGN.md` Charts, README Statistics sora.
+1. [x] **Domain:** `src/domain/monthlyStats.ts` + `tests/monthlyStats.test.ts`. Teszt: hónaplépés év határán; összegzés `bigint`-tel 2^53 fölött; átlag (kevesebb mint 3 hónap → nincs; az első tranzakció előtti hónapok kimaradnak; üres hónap = 0; a folyó hónap nem számít); lebontás (rendezés, a 7-es levágás nem itt, hanem a komponensben; nulla kimarad; negatív külön; `pocketIds` sorpontosan); `chartScale` negatív értékkel; `monthsCteSql` paraméterei.
+2. [x] **Repó:** `src/db/repositories/monthlyStats.ts`, `getEarliestOccurredAt(currency, scope)`. Kézi ellenőrzés teszt-vaulttal: egy hónap összegei egyeznek a `ReportExport` előnézetével (ugyanaz a zsebkör), a hónap végi egyenleg a mai „Balance over time” görbe adott napi értékével.
+3. [x] **Közös választás és alap-komponensek:** `useStatisticsSelection`, `SegmentedControl`, `RankedBarList`, `MonthlyBarsChart`. A `DESIGN.md`-be az új komponensek.
+4. [x] **Áttekintő** átírása, `BalanceTrendCard` kiemelése, `Export` a fejlécbe.
+5. [x] **Hónapnézet** képernyő és route.
+6. [x] **History lefúrás:** `fromMs`/`toMs` a `buildTransactionFilter`-ben (teszt a `tests/transactionFilter.test.ts`-ben: határok `>=`/`<`; `jarPocketId: null` mellett az `income` nem húz be átvezetést), `drill` paraméter, chip.
+7. [x] **Takarítás:** a halott kód és a `DonutChart` törlése, `DESIGN.md` Charts, README Statistics sora.
 8. [ ] **Eszközön** (dev build, teszt-vault, világos és sötét téma, legnagyobb betűméret): lásd Ellenőrzés; utána `design-review`.
 
 ## Ellenőrzés
