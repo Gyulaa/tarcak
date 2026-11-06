@@ -87,13 +87,13 @@ type Props = {
   refreshKey: number;
 };
 
-/** "Balance over time": collapsed by default; the timeline loads only while it is open. */
+/** "Balance over time": open by default; collapsing it stops loading the timeline. */
 export function BalanceTrendCard({ currency, scope, refreshKey }: Props) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { width: winW } = useWindowDimensions();
 
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [rangeValue, setRangeValue] = useState<TimeRangeValue>({ kind: 'preset', id: '30d' });
   /** Earliest transaction overall, for the "All time" range; read only once the card is open. */
   const [earliestMs, setEarliestMs] = useState<number | null>(null);

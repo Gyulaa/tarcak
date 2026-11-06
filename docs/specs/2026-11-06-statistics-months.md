@@ -1,6 +1,6 @@
 # Spec: Statisztika hónapokra bontva (áttekintő + hónapnézet)
 
-Állapot: **megvalósítva (1–7. feladat), eszközös próba hátra.** Készült: 2026-11-06. Ág: `feat/statistics-months` (a `main`-ről).
+Állapot: **megvalósítva, eszközön kipróbálva (Gyula, 2026-11-06).** Készült: 2026-11-06. Ág: `feat/statistics-months` (a `main`-ről).
 
 ## Cél
 
@@ -82,6 +82,7 @@ Adatvédelem (`privacy-check`): nincs új adatmező, export, hálózat, napló v
 
 ## Eltérések a tervtől (megvalósításkor)
 - Az „első tranzakció” az első olyan tétel, amely a zsebkör egyenlegét változtatja, átvezetés is (`getFirstActivityAt(currency, scope)` a `monthlyStats` repóban); így egy csak átvezetésből feltöltött zseb hónapjai is elérhetők. A meglévő `getEarliestOccurredAt` változatlan (a `TimeRangePickerField` használja). Ha nincs ilyen tétel: „No HUF transactions yet.”; a „Balance over time” kártya ekkor is látszik.
+- A „Balance over time” kártya alapból **nyitva** van (Gyula kérése az eszközös próba után, 2026-11-06); csukva nem tölt. Így az áttekintő megnyitásakor a 2 havi lekérdezés mellé még 2 fut (legkorábbi dátum, idősor).
 - A csempék és a kapcsoló a `radio` szerephez illő `accessibilityState.checked`-et használják (nem `selected`).
 - Hónapnézetben visszalépéskor egy hiányzó hónap 2 lekérdezés (összegek és egyenleg), nem 1.
 - A History lefúrási paramétere `TransactionDrill` (`src/domain/transactionFilter.ts`); a `categoryId: null` jelenti a kategória nélkülit. A szűrőt a `filterForDrill` építi, és teszt őrzi, hogy a listázott tételek összege megegyezik a sor összegével.
@@ -98,7 +99,7 @@ Mindegyik külön commit, a saját tesztjével; a végén `scripts/check.sh` = O
 5. [x] **Hónapnézet** képernyő és route.
 6. [x] **History lefúrás:** `fromMs`/`toMs` a `buildTransactionFilter`-ben (teszt a `tests/transactionFilter.test.ts`-ben: határok `>=`/`<`; `jarPocketId: null` mellett az `income` nem húz be átvezetést), `drill` paraméter, chip.
 7. [x] **Takarítás:** a halott kód és a `DonutChart` törlése, `DESIGN.md` Charts, README Statistics sora.
-8. [ ] **Eszközön** (dev build, teszt-vault, világos és sötét téma, legnagyobb betűméret): lásd Ellenőrzés; utána `design-review`.
+8. [x] **Eszközön** (dev build, teszt-vault, világos és sötét téma, legnagyobb betűméret): lásd Ellenőrzés; utána `design-review`.
 
 ## Ellenőrzés
 
