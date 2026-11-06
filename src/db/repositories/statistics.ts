@@ -74,6 +74,51 @@ function deltaForScope(row: TxRow, scope: StatisticsScope): number {
   return 0;
 }
 
+/**
+ * The signed balance change of one `transactions` row for `scope`, as a SQL expression: income and
+ * expense move the balance of their pocket; a transfer adds where its target is inside the scope and
+ * subtracts where its source is, independently, so a transfer with both sides inside nets to zero
+ * (a single CASE would stop at the first matching side and count it as money leaving).
+ */
+export function scopeBalanceDeltaSql(scope: StatisticsScope): { sql: string; params: string[] } {
+  if (scope.mode === 'all') {
+    return {
+      sql: `CASE kind
+          WHEN 'income' THEN amount_minor
+          WHEN 'expense' THEN -amount_minor
+          ELSE 0
+        END`,
+      params: [],
+    };
+  }
+  if (scope.mode === 'pocket') {
+    const p = scope.pocketId;
+    return {
+      sql: `CASE
+          WHEN kind = 'income' AND pocket_id = ? THEN amount_minor
+          WHEN kind = 'expense' AND pocket_id = ? THEN -amount_minor
+          WHEN kind = 'transfer' THEN
+            (CASE WHEN to_pocket_id = ? THEN amount_minor ELSE 0 END)
+            - (CASE WHEN from_pocket_id = ? THEN amount_minor ELSE 0 END)
+          ELSE 0
+        END`,
+      params: [p, p, p, p],
+    };
+  }
+  const j = scope.jarId;
+  return {
+    sql: `CASE
+        WHEN kind = 'income' AND pocket_id IS NOT NULL AND pocket_id != ? THEN amount_minor
+        WHEN kind = 'expense' AND pocket_id IS NOT NULL AND pocket_id != ? THEN -amount_minor
+        WHEN kind = 'transfer' THEN
+          (CASE WHEN to_pocket_id != ? THEN amount_minor ELSE 0 END)
+          - (CASE WHEN from_pocket_id != ? THEN amount_minor ELSE 0 END)
+        ELSE 0
+      END`,
+    params: [j, j, j, j],
+  };
+}
+
 async function baselineMinorBefore(
   currency: string,
   scope: StatisticsScope,
@@ -82,50 +127,11 @@ async function baselineMinorBefore(
 ): Promise<number> {
   const db = await openMainDatabase();
   const cat = categoryFilterSql(categoryFilter);
-  if (scope.mode === 'all') {
-    const r = await db.getFirstAsync<{ b: number }>(
-      `SELECT COALESCE(SUM(
-        CASE kind
-          WHEN 'income' THEN amount_minor
-          WHEN 'expense' THEN -amount_minor
-          ELSE 0
-        END
-      ), 0) AS b
-      FROM transactions WHERE currency = ? AND occurred_at < ? ${cat.sql}`,
-      [currency, beforeMs, ...cat.params]
-    );
-    return r?.b ?? 0;
-  }
-  if (scope.mode === 'pocket') {
-    const p = scope.pocketId;
-    const r = await db.getFirstAsync<{ b: number }>(
-      `SELECT COALESCE(SUM(
-        CASE
-          WHEN kind = 'income' AND pocket_id = ? THEN amount_minor
-          WHEN kind = 'expense' AND pocket_id = ? THEN -amount_minor
-          WHEN kind = 'transfer' AND from_pocket_id = ? THEN -amount_minor
-          WHEN kind = 'transfer' AND to_pocket_id = ? THEN amount_minor
-          ELSE 0
-        END
-      ), 0) AS b
-      FROM transactions WHERE currency = ? AND occurred_at < ? ${cat.sql}`,
-      [p, p, p, p, currency, beforeMs, ...cat.params]
-    );
-    return r?.b ?? 0;
-  }
-  const j = scope.jarId;
+  const delta = scopeBalanceDeltaSql(scope);
   const r = await db.getFirstAsync<{ b: number }>(
-    `SELECT COALESCE(SUM(
-      CASE
-        WHEN kind = 'income' AND pocket_id IS NOT NULL AND pocket_id != ? THEN amount_minor
-        WHEN kind = 'expense' AND pocket_id IS NOT NULL AND pocket_id != ? THEN -amount_minor
-        WHEN kind = 'transfer' AND from_pocket_id != ? THEN -amount_minor
-        WHEN kind = 'transfer' AND to_pocket_id != ? THEN amount_minor
-        ELSE 0
-      END
-    ), 0) AS b
+    `SELECT COALESCE(SUM(${delta.sql}), 0) AS b
     FROM transactions WHERE currency = ? AND occurred_at < ? ${cat.sql}`,
-    [j, j, j, j, currency, beforeMs, ...cat.params]
+    [...delta.params, currency, beforeMs, ...cat.params]
   );
   return r?.b ?? 0;
 }
