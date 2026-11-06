@@ -184,7 +184,7 @@ export function cumulativeBalances(
 }
 
 /**
- * `WITH m(k, f, t) AS (VALUES …)`: one row per month (key, inclusive start, exclusive end), so a
+ * `WITH m(month_key, from_ms, to_ms) AS (VALUES …)`: one row per month (key, inclusive start, exclusive end), so a
  * single query can group the ledger by month. With `openStart`, the first month also takes
  * everything before it (for running balances).
  */
@@ -198,7 +198,7 @@ export function monthsCteSql(
     params.push(m.key, i === 0 && options.openStart ? Number.MIN_SAFE_INTEGER : m.fromMs, m.toMs);
   });
   const values = months.map(() => '(?, ?, ?)').join(', ');
-  return { sql: `WITH m(k, f, t) AS (VALUES ${values})`, params };
+  return { sql: `WITH m(month_key, from_ms, to_ms) AS (VALUES ${values})`, params };
 }
 
 /** Rounds a step up to 1, 2, 2.5 or 5 times a power of ten, so axis ticks read as round numbers. */

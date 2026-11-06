@@ -257,7 +257,7 @@ describe('monthsCteSql', () => {
   test('one VALUES row per month, keys and bounds as params', () => {
     const months = monthsEndingAt('2026-10', 2);
     const { sql, params } = monthsCteSql(months);
-    assert.equal(sql, 'WITH m(k, f, t) AS (VALUES (?, ?, ?), (?, ?, ?))');
+    assert.equal(sql, 'WITH m(month_key, from_ms, to_ms) AS (VALUES (?, ?, ?), (?, ?, ?))');
     assert.deepEqual(params, [
       '2026-09', months[0]!.fromMs, months[0]!.toMs,
       '2026-10', months[1]!.fromMs, months[1]!.toMs,
