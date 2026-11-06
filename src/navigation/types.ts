@@ -13,6 +13,8 @@ export type RootStackParamList = {
   };
   History: { pocketId?: string } | undefined;
   Statistics: { initialCurrency?: string } | undefined;
+  /** `monthKey` is `YYYY-MM`. */
+  StatisticsMonth: { monthKey: string };
   ReportExport: undefined;
   Settings: undefined;
   AssetTypes: undefined;
