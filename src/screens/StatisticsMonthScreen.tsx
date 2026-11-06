@@ -11,6 +11,7 @@ import {
   AVERAGE_MONTHS,
   buildBreakdown,
   cumulativeBalances,
+  monthFromKey,
   monthlyAverage,
   monthOf,
   monthsEndingAt,
@@ -27,7 +28,7 @@ import { formatMinorAmountForDisplay } from '../utils/formatMinor';
 import { formatShare } from '../utils/formatShare';
 import { HIT_SLOP } from '../utils/hitSlop';
 import { assignChartColors, buildThemeChartPalette, resolveStoredColor } from '../utils/pocketChartColors';
-import { monthLongLabel, signedAmount } from './statistics/format';
+import { monthLongLabel, monthShortLabel, signedAmount } from './statistics/format';
 import { loadFlows } from './statistics/loadFlows';
 import { StatisticsChips } from './statistics/StatisticsChips';
 import { useStatisticsSelection } from './statistics/useStatisticsSelection';
@@ -173,6 +174,26 @@ export default function StatisticsMonthScreen({ route, navigation }: RootStackSc
     return [...positive, ...negative];
   }, [breakdown, currency, by, chartPalette, colors.textMuted]);
 
+  /** Opens History on exactly the transactions behind one breakdown row. */
+  const openRow = (rowKey: string) => {
+    if (!breakdown || !currency) return;
+    const row = [...breakdown.rows, ...breakdown.negative].find((r) => (r.id ?? '') === rowKey);
+    if (!row) return;
+    const month = monthFromKey(monthKey);
+    navigation.navigate('History', {
+      drill: {
+        label: `${monthShortLabel(monthKey)} · ${row.name} · ${KIND_LABEL[kind]}`,
+        currency,
+        kind,
+        fromMs: month.fromMs,
+        toMs: month.toMs,
+        categoryId: by === 'category' ? row.id : undefined,
+        // All pockets need no pocket condition; a narrower scope names the pockets the sum came from.
+        pocketIds: by === 'pocket' ? row.pocketIds : scope.mode === 'all' ? undefined : row.pocketIds,
+      },
+    });
+  };
+
   const currentMonthKey = monthOf(Date.now()).key;
   const isCurrent = monthKey === currentMonthKey;
   const canPrev = !!view?.firstKey && monthKey > view.firstKey;
@@ -272,7 +293,7 @@ export default function StatisticsMonthScreen({ route, navigation }: RootStackSc
                   No {kind === 'income' ? 'income' : 'expenses'} in {monthTitle}.
                 </Text>
               ) : (
-                <RankedBarList key={`${monthKey}|${kind}|${by}`} rows={bars} />
+                <RankedBarList key={`${monthKey}|${kind}|${by}`} rows={bars} onPressRow={openRow} />
               )}
             </View>
           </>

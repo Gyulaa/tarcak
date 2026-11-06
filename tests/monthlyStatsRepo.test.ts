@@ -8,7 +8,9 @@ import {
   MAX_MONTHS_PER_QUERY,
 } from '../src/db/repositories/monthlyStats';
 import type { StatisticsScope } from '../src/db/repositories/statistics';
-import { cumulativeBalances, monthsEndingAt, summarizeMonths } from '../src/domain/monthlyStats';
+import { listTransactions } from '../src/db/repositories/transactions';
+import { buildBreakdown, cumulativeBalances, monthsEndingAt, summarizeMonths } from '../src/domain/monthlyStats';
+import { filterForDrill } from '../src/domain/transactionFilter';
 import { addTx, createLedgerTables } from './ledgerFixture';
 import { testDb } from './stubs/dbClient';
 
@@ -118,5 +120,48 @@ describe('getFirstFlowAt', () => {
     assert.equal(await getFirstFlowAt('HUF', ALL), 200);
     assert.equal(await getFirstFlowAt('HUF', OUTSIDE_JAR), 300);
     assert.equal(await getFirstFlowAt('USD', ALL), null);
+  });
+});
+
+describe('drill-down from a breakdown row', () => {
+  beforeEach(() => {
+    createLedgerTables();
+    testDb.exec(`INSERT INTO categories VALUES ('food', 'Food', NULL)`);
+  });
+
+  test('History lists exactly the transactions behind the row, Outside Jar too', async () => {
+    const oct = monthsEndingAt('2026-10', 1)[0]!;
+    addTx({ kind: 'expense', amount: 100, at: at(2026, 10, 3), pocket: 'p1', category: 'food' });
+    addTx({ kind: 'expense', amount: -30, at: at(2026, 10, 4), pocket: 'p2', category: 'food' });
+    addTx({ kind: 'expense', amount: 500, at: at(2026, 10, 5), pocket: 'jar', category: 'food' });
+    addTx({ kind: 'expense', amount: 7, at: at(2026, 9, 30), pocket: 'p1', category: 'food' });
+    addTx({ kind: 'expense', amount: 9, at: at(2026, 10, 5), pocket: 'p1' });
+    addTx({ kind: 'transfer', amount: 40, at: at(2026, 10, 6), from: 'p1', to: 'jar' });
+    addTx({ kind: 'income', amount: 60, at: at(2026, 10, 6), pocket: 'jar' });
+
+    for (const scope of [ALL, OUTSIDE_JAR]) {
+      const flows = await getMonthlyFlows('HUF', scope, [oct]);
+      for (const kind of ['income', 'expense'] as const) {
+        const rows = [
+          ...buildBreakdown(flows, '2026-10', kind, 'category').rows,
+          ...buildBreakdown(flows, '2026-10', kind, 'category').negative,
+        ];
+        for (const row of rows) {
+          const listed = await listTransactions({
+            filter: filterForDrill({
+              label: '',
+              currency: 'HUF',
+              kind,
+              fromMs: oct.fromMs,
+              toMs: oct.toMs,
+              categoryId: row.id,
+              pocketIds: scope.mode === 'all' ? undefined : row.pocketIds,
+            }),
+          });
+          const sum = listed.reduce((acc, t) => acc + BigInt(t.amount_minor), 0n);
+          assert.equal(sum, row.total, `${scope.mode} ${kind} ${row.name}`);
+        }
+      }
+    }
   });
 });
