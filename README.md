@@ -366,7 +366,7 @@ For each pocket `p` and currency `c`:
 - **Jar:** `listJarDistributionRules`, `replaceJarDistributionRules`, `distributeJarCurrency`, `splitAmountByBps` (pure helper).
 - **Jar advanced:** `listJarAdvancedSummaries`, `getJarAdvancedAssetDetail`, `saveJarAdvancedAsset`, `deleteJarAdvancedAsset`, `getJarAdvancedDistributeConfig`, `resolveAdvancedEffectiveBps`, etc.
 - **Report:** `getReportRows({ months, scope, currencies? })` ([`src/db/repositories/report.ts`](src/db/repositories/report.ts)): income/expense sums per month, currency, kind and category, as BigInt.
-- **Statistics:** `getBalanceTimeline`, `downsampleTimeline`, `getEarliestOccurredAt` (for the balance chart and time-range defaults), `scopeBalanceDeltaSql` (a row's balance change per pocket scope). **Monthly stats:** `getMonthlyFlows` (month × kind × category × pocket sums), `getMonthBalanceDeltas` (for month-end balances), `getFirstFlowAt`.
+- **Statistics:** `getBalanceTimeline`, `downsampleTimeline`, `getEarliestOccurredAt` (for the balance chart and time-range defaults), `scopeBalanceDeltaSql` (a row's balance change per pocket scope). **Monthly stats:** `getMonthlyFlows` (month × kind × category × pocket sums), `getMonthBalanceDeltas` (for month-end balances), `getFirstActivityAt`.
 
 ---
 

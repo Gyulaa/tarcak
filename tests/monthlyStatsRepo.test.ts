@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, beforeEach, describe, test } from 'node:test';
 
 import {
-  getFirstFlowAt,
+  getFirstActivityAt,
   getMonthBalanceDeltas,
   getMonthlyFlows,
   MAX_MONTHS_PER_QUERY,
@@ -109,17 +109,20 @@ describe('getMonthBalanceDeltas → month-end balances', () => {
   });
 });
 
-describe('getFirstFlowAt', () => {
+describe('getFirstActivityAt', () => {
   beforeEach(createLedgerTables);
 
-  test('earliest income or expense in the scope and currency; transfers do not count', async () => {
+  test('earliest transaction that changes the scope balance, in that currency', async () => {
     addTx({ kind: 'transfer', amount: 5, at: 100, from: 'p1', to: 'p2' });
     addTx({ kind: 'income', amount: 5, at: 200, pocket: 'jar' });
     addTx({ kind: 'expense', amount: 5, at: 300, pocket: 'p1' });
     addTx({ kind: 'expense', amount: 5, at: 50, pocket: 'p1', currency: 'EUR' });
-    assert.equal(await getFirstFlowAt('HUF', ALL), 200);
-    assert.equal(await getFirstFlowAt('HUF', OUTSIDE_JAR), 300);
-    assert.equal(await getFirstFlowAt('USD', ALL), null);
+    // A transfer moves nothing for all pockets, nor between two pockets outside the Jar.
+    assert.equal(await getFirstActivityAt('HUF', ALL), 200);
+    assert.equal(await getFirstActivityAt('HUF', OUTSIDE_JAR), 300);
+    // A pocket funded only by a transfer starts with that transfer.
+    assert.equal(await getFirstActivityAt('HUF', { mode: 'pocket', pocketId: 'p2' }), 100);
+    assert.equal(await getFirstActivityAt('USD', ALL), null);
   });
 });
 

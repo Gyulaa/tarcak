@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { RankedBarList, type RankedBar } from '../components/RankedBarList';
 import { ScreenWithFooter } from '../components/ScreenWithFooter';
 import { SegmentedControl } from '../components/SegmentedControl';
-import { getFirstFlowAt, getMonthBalanceDeltas } from '../db/repositories/monthlyStats';
+import { getFirstActivityAt, getMonthBalanceDeltas } from '../db/repositories/monthlyStats';
 import type { ReportKind } from '../domain/monthlyReport';
 import {
   AVERAGE_MONTHS,
@@ -40,7 +40,7 @@ type MonthCache = {
   refreshKey: number;
   flows: Map<string, FlowRow[]>;
   balances: Map<string, bigint>;
-  firstFlowAt: number | null;
+  firstActivityAt: number | null;
 };
 
 const KIND_LABEL: Record<ReportKind, string> = { income: 'Income', expense: 'Expense' };
@@ -91,10 +91,10 @@ export default function StatisticsMonthScreen({ route, navigation }: RootStackSc
     setError(false);
     void (async () => {
       try {
-        const [flows, deltas, firstFlowAt] = await Promise.all([
+        const [flows, deltas, firstActivityAt] = await Promise.all([
           loadFlows(currency, scope, range),
           getMonthBalanceDeltas(currency, scope, range),
-          known ? Promise.resolve(known.firstFlowAt) : getFirstFlowAt(currency, scope),
+          known ? Promise.resolve(known.firstActivityAt) : getFirstActivityAt(currency, scope),
         ]);
         if (seq !== loadSeq.current) return;
         const next: MonthCache = {
@@ -102,7 +102,7 @@ export default function StatisticsMonthScreen({ route, navigation }: RootStackSc
           refreshKey,
           flows: new Map(known?.flows),
           balances: new Map(known?.balances),
-          firstFlowAt,
+          firstActivityAt,
         };
         for (const m of range) next.flows.set(m.key, []);
         for (const f of flows) next.flows.get(f.month)?.push(f);
@@ -128,7 +128,7 @@ export default function StatisticsMonthScreen({ route, navigation }: RootStackSc
     const keys = [...c.flows.keys()];
     const allFlows = keys.flatMap((k) => c.flows.get(k)!);
     const summaries = summarizeMonths(allFlows, keys);
-    const firstKey = c.firstFlowAt != null ? monthOf(c.firstFlowAt).key : null;
+    const firstKey = c.firstActivityAt != null ? monthOf(c.firstActivityAt).key : null;
     return {
       summary: summaries.get(monthKey)!,
       monthFlows: c.flows.get(monthKey)!,
@@ -237,12 +237,15 @@ export default function StatisticsMonthScreen({ route, navigation }: RootStackSc
           </Pressable>
         </View>
 
-        {error ? (
-          <Text style={styles.error}>Could not read the ledger. Try again.</Text>
-        ) : !view || !currency ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
+        {!view || !currency ? (
+          // An error only matters while there is nothing to show; a cached month stays readable.
+          error ? (
+            <Text style={styles.error}>Could not read the ledger. Try again.</Text>
+          ) : (
+            <View style={styles.loading}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          )
         ) : (
           <>
             <View style={styles.tiles} accessibilityRole="radiogroup" accessibilityLabel="Show breakdown of">

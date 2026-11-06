@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { BalanceTrendCard } from '../components/BalanceTrendCard';
 import { MonthlyBarsChart, type MonthBars } from '../components/MonthlyBarsChart';
 import { ScreenWithFooter } from '../components/ScreenWithFooter';
-import { getFirstFlowAt } from '../db/repositories/monthlyStats';
+import { getFirstActivityAt } from '../db/repositories/monthlyStats';
 import type { ReportMonth } from '../domain/monthlyReport';
 import { monthOf, monthsEndingAt, shiftMonthKey, summarizeMonths, type FlowRow } from '../domain/monthlyStats';
 import type { RootStackScreenProps } from '../navigation/types';
@@ -29,7 +29,7 @@ type Loaded = {
   /** Oldest first; the last one is the current month. */
   months: ReportMonth[];
   flows: FlowRow[];
-  firstFlowAt: number | null;
+  firstActivityAt: number | null;
 };
 
 export default function StatisticsScreen({ route, navigation }: RootStackScreenProps<'Statistics'>) {
@@ -92,12 +92,12 @@ export default function StatisticsScreen({ route, navigation }: RootStackScreenP
     setError(false);
     void (async () => {
       try {
-        const [flows, firstFlowAt] = await Promise.all([
+        const [flows, firstActivityAt] = await Promise.all([
           loadFlows(currency, scope, months),
-          getFirstFlowAt(currency, scope),
+          getFirstActivityAt(currency, scope),
         ]);
         if (seq !== loadSeq.current) return;
-        setData({ selectionKey, months, flows, firstFlowAt });
+        setData({ selectionKey, months, flows, firstActivityAt });
       } catch {
         if (seq === loadSeq.current) setError(true);
       } finally {
@@ -107,12 +107,13 @@ export default function StatisticsScreen({ route, navigation }: RootStackScreenP
   }, [ready, currency, scope, selectionKey, refreshKey]);
 
   const current = data && data.selectionKey === selectionKey ? data : null;
-  const firstKey = current?.firstFlowAt != null ? monthOf(current.firstFlowAt).key : null;
+  const firstKey = current?.firstActivityAt != null ? monthOf(current.firstActivityAt).key : null;
   const oldestKey = current?.months[0]?.key ?? null;
   const canLoadEarlier = !!firstKey && !!oldestKey && firstKey < oldestKey;
 
   const loadEarlier = async () => {
-    if (!current || !currency || !oldestKey || loadingEarlier) return;
+    // A refresh in flight would replace the months this adds, so wait for it.
+    if (!current || !currency || !oldestKey || loadingEarlier || loading) return;
     const seq = loadSeq.current;
     const months = monthsEndingAt(shiftMonthKey(oldestKey, -1), PAGE_MONTHS);
     setLoadingEarlier(true);
@@ -148,7 +149,7 @@ export default function StatisticsScreen({ route, navigation }: RootStackScreenP
     });
   }, [current, summaries]);
 
-  /** Newest first, from the month of the first income or expense on. */
+  /** Newest first, from the month of the first transaction in this scope on. */
   const listMonths = useMemo(() => {
     if (!current || !firstKey) return [];
     return current.months
@@ -180,8 +181,12 @@ export default function StatisticsScreen({ route, navigation }: RootStackScreenP
               </View>
             ) : error ? (
               <Text style={[styles.error, styles.block]}>Could not read the ledger. Try again.</Text>
-            ) : current && current.firstFlowAt === null ? (
-              <Text style={[styles.muted, styles.block]}>No income or expenses in {currency} yet.</Text>
+            ) : current && current.firstActivityAt === null ? (
+              <Text style={[styles.muted, styles.block]}>
+                {scopeKey === 'all'
+                  ? `No ${currency} transactions yet.`
+                  : `No ${currency} transactions in ${selection.scopeLabel} yet.`}
+              </Text>
             ) : current ? (
               <>
                 <View style={styles.card}>
@@ -228,9 +233,9 @@ export default function StatisticsScreen({ route, navigation }: RootStackScreenP
                   <Pressable
                     style={styles.moreBtn}
                     onPress={() => void loadEarlier()}
-                    disabled={loadingEarlier}
+                    disabled={loadingEarlier || loading}
                     accessibilityRole="button"
-                    accessibilityState={{ busy: loadingEarlier }}
+                    accessibilityState={{ busy: loadingEarlier, disabled: loadingEarlier || loading }}
                   >
                     {loadingEarlier ? (
                       <ActivityIndicator color={colors.primary} />
@@ -242,7 +247,7 @@ export default function StatisticsScreen({ route, navigation }: RootStackScreenP
               </>
             ) : null}
 
-            {current && currency && current.firstFlowAt !== null ? (
+            {current && currency ? (
               <BalanceTrendCard currency={currency} scope={scope} refreshKey={refreshKey} />
             ) : null}
           </>

@@ -91,14 +91,18 @@ export async function getMonthBalanceDeltas(
   return new Map(rows.map((r) => [r.month, BigInt(r.delta)]));
 }
 
-/** When the first income or expense of `currency` within `scope` happened, or null if there is none. */
-export async function getFirstFlowAt(currency: string, scope: StatisticsScope): Promise<number | null> {
-  const scoped = scopeSql(scope);
+/**
+ * When the first transaction that changed the balance of `scope` in `currency` happened, or null if
+ * none did. A transfer counts where it moves money in or out of the scope, so a pocket funded only
+ * by transfers starts with its first transfer; months before this one have nothing to show.
+ */
+export async function getFirstActivityAt(currency: string, scope: StatisticsScope): Promise<number | null> {
+  const delta = scopeBalanceDeltaSql(scope);
   const db = await openMainDatabase();
   const r = await db.getFirstAsync<{ m: number | null }>(
-    `SELECT MIN(t.occurred_at) AS m FROM transactions t
-     WHERE t.currency = ? AND t.kind IN ('income', 'expense') ${scoped.sql}`,
-    [currency, ...scoped.params]
+    `SELECT MIN(occurred_at) AS m FROM transactions
+     WHERE currency = ? AND (${delta.sql}) != 0`,
+    [currency, ...delta.params]
   );
   return r?.m ?? null;
 }
