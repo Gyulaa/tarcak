@@ -102,6 +102,9 @@ Radii in use: 8 (chips, small controls, bars), 10 (buttons, inputs, the most com
 - **Pocket picker rows:** `pocketPick*` tokens; selected state uses border and text colour.
 - **Charts:** `react-native-gifted-charts` (line, and the donut in `DonutChart`) and the Jar's own SVG chart; value readout in a fixed row above the chart (no floating tooltip; Android ScrollView clips overflow). A drawn chart is an `image` for screen readers with a one-sentence summary; the donut's legend (name, share, amount) is the readable version. The line chart draws the zero line so negative stretches are visible without colour.
 - **Switches:** `switchTrack*` / `switchThumb*` tokens, never the platform default colours.
+- **Selector chips** (`ModalSelectField` with `trigger="chip"`, Statistics): a `chipBg` pill showing only the value and `▾`; the label is read out, not shown. Tapping opens the usual sheet.
+- **`SegmentedControl`:** two or three mutually exclusive options on `surfaceMuted`; the selected one is a `surface` tile with a `primary` border and semibold `primary` text, so the choice does not rest on colour alone. Radio semantics for screen readers.
+- **`RankedBarList`:** a breakdown as rows (name, amount, share) with an 8 dp bar under each on `barTrack`, longest first, at most 7 before "Show all N". Preferred over a donut: it reads with many items and leaves negative totals as plain rows.
 
 ## Do's and Don'ts
 - Do: take every colour from `useAppTheme()`; add a new token to `AppColors` and to all six palettes in both variants in the same change, and list it here.
